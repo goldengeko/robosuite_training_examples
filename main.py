@@ -4,12 +4,12 @@ import gym
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 import robosuite as suite
-from robosuite.wrappers import GymWrapper
+from robosuite.environments.base import register_env
 from networks import CriticNetwork, ActorNetwork
 from buffer import ReplayBuffer
 from td3_torch import Agent
-from robosuite.models.grippers import gripper_factory
-
+#from robosuite.wrappers.gym_wrapper import GymWrapper
+from robosuite.wrappers import GymWrapper
 
 if not os.path.exists("tmp/td3"):
     os.makedirs("tmp/td3")
@@ -17,25 +17,27 @@ if not os.path.exists("tmp/td3"):
 env_name = "Door"
 
 env = suite.make(
-    env_name,
-    robots=["Kinova3"],
-    controller_configs=suite.load_controller_config(default_controller="JOINT_VELOCITY"),
-    has_renderer=False,
-    use_camera_obs=False,
-    horizon=300,
-    reward_shaping=True,
-    control_freq=20
-)
+            env_name,
+            robots=["Kinova3"],
+            controller_configs=[suite.load_controller_config(default_controller="JOINT_VELOCITY")], 
+            has_renderer=False,
+            use_camera_obs=False,
+            horizon=300,
+            render_camera="frontview",
+            reward_shaping=True,
+            control_freq=20
+        )
+
 env = GymWrapper(env)
 
 actor_learning_rate = 0.001
 critic_learning_rate = 0.001
-batch_size = 128
+batch_size = 128 
 layer1_size = 256
 layer2_size = 128
 
 agent= Agent(actor_learning_rate=actor_learning_rate, critic_learning_rate=critic_learning_rate, tau=0.005, input_dims=env.observation_space.shape,
-             env=env, n_actions=env.action_space.shape[0], layer1_size=layer1_size, layer2_size=layer2_size, batch_size=batch_size)
+                 env=env, n_actions=env.action_space.shape[0],warmup=1000, layer1_size=layer1_size, layer2_size=layer2_size, batch_size=batch_size)
 
 writer = SummaryWriter('logs')
 n_games = 10000
@@ -52,7 +54,7 @@ for i in range(n_games):
     while not done:
         action = agent.choose_action(observation)
         next_observation, reward, done, info = env.step(action)
-
+        #print(f"Observation: {observation}, Action: {action}, Reward: {reward}, Next Observation: {next_observation}, Done: {done}")
         score += reward
         agent.remember(observation, action, reward, next_observation, done)
         agent.learn()
@@ -61,11 +63,7 @@ for i in range(n_games):
 
     if (i % 10):
         agent.save_models()
+
+
     
     print(f"Episode: {i} score: {score}")
-
-###
-#critic_network = CriticNetwork([8],8)
-#actor_network = ActorNetwork([8],8)o
-#
-#replay_buffer = ReplayBuffer(8,[8],8)

@@ -15,7 +15,8 @@ class ReplayBuffer():
 
     def store_transition(self, state, action, reward, next_state, done):
         index = self.mem_ctr % self.mem_size
-
+        if self.mem_ctr >= self.mem_size:
+            print("critical point")
         self.state_memory[index] = state
         self.next_state_memory[index] = next_state
         self.action_memory[index] = action

@@ -78,7 +78,7 @@ class Agent():
         target_actions = T.clamp(target_actions, self.min_action[0], self.max_action[0])
 
         next_q1 = self.target_critic1.forward(next_state, target_actions)
-        next_q2 = self.target_critic2.forward(next_state,target_actions)
+        next_q2 = self.target_critic2.forward(next_state, target_actions)
 
         q1 = self.critic1.forward(state, action)
         q2 = self.critic2.forward(state, action)
