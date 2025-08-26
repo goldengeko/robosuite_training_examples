@@ -41,10 +41,10 @@ env = suite.make(
 
 # Run the simulation, and visualize it
 env.reset()
-mujoco.viewer.launch(env.sim.model._model, env.sim.data._data)
+# mujoco.viewer.launch(env.sim.model._model, env.sim.data._data)
 
-""" for i in range(1000):
+for i in range(1000):
     action = np.random.randn(*env.action_spec[0].shape) * 0.1
     obs, reward, done, info = env.step(action)  # take action in the environment
     print(i, obs, reward, done, info)
-    env.render()  # render on display """
+    env.render()  # render on display

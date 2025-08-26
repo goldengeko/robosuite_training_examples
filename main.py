@@ -1,69 +1,76 @@
-import time
 import os
-import gym
 import numpy as np
-from torch.utils.tensorboard import SummaryWriter
 import robosuite as suite
-from robosuite.environments.base import register_env
-from networks import CriticNetwork, ActorNetwork
-from buffer import ReplayBuffer
-from td3_torch import Agent
-#from robosuite.wrappers.gym_wrapper import GymWrapper
+from robosuite.controllers import load_composite_controller_config
 from robosuite.wrappers import GymWrapper
+from networks import TD3, ReplayBuffer
 
 if not os.path.exists("tmp/td3"):
     os.makedirs("tmp/td3")
     
 env_name = "Door"
-
 env = suite.make(
-            env_name,
-            robots=["Kinova3"],
-            controller_configs=[suite.load_controller_config(default_controller="JOINT_VELOCITY")], 
-            has_renderer=False,
-            use_camera_obs=False,
-            horizon=300,
-            render_camera="frontview",
-            reward_shaping=True,
-            control_freq=20
-        )
-
+    env_name,
+    robots=["Kinova3"],
+    controller_configs=[load_composite_controller_config(
+        controller="/home/guts/robosuite/lib/python3.10/site-packages/robosuite/controllers/config/robots/default_kinova3.json"
+    )],
+    reward_shaping=True,
+    has_renderer=True,
+    has_offscreen_renderer=False,
+    render_camera="frontview",
+    use_camera_obs=False,
+    control_freq=20
+)
 env = GymWrapper(env)
 
-actor_learning_rate = 0.001
-critic_learning_rate = 0.001
-batch_size = 128 
-layer1_size = 256
-layer2_size = 128
+obs, _ = env.reset()
+if isinstance(obs, dict):
+    state = np.concatenate([v.ravel() for v in obs.values()])
+else:
+    state = obs
 
-agent= Agent(actor_learning_rate=actor_learning_rate, critic_learning_rate=critic_learning_rate, tau=0.005, input_dims=env.observation_space.shape,
-                 env=env, n_actions=env.action_space.shape[0],warmup=1000, layer1_size=layer1_size, layer2_size=layer2_size, batch_size=batch_size)
+state_dim = state.shape[0]
+action_dim = env.action_spec[0].shape[0]
+max_action = 1.0
 
-writer = SummaryWriter('logs')
-n_games = 10000
-best_score = 0
-episode_identifier = f"0 - actor_learning_rate={actor_learning_rate} critic_learning_rate={critic_learning_rate} layer1_size={layer1_size} layer2_size={layer2_size}"
+replay_buffer = ReplayBuffer()
+agent = TD3(state_dim, action_dim, max_action)
 
-agent.load_models()
+episodes = 1000
+episode_length = 500
 
-for i in range(n_games):
-    observation = env.reset()
-    done = False
-    score = 0
+for ep in range(episodes):
+    obs, _ = env.reset()
+    if isinstance(obs, dict):
+        state = np.concatenate([v.ravel() for v in obs.values()])
+    else:
+        state = obs
 
-    while not done:
-        action = agent.choose_action(observation)
-        next_observation, reward, done, info = env.step(action)
-        #print(f"Observation: {observation}, Action: {action}, Reward: {reward}, Next Observation: {next_observation}, Done: {done}")
-        score += reward
-        agent.remember(observation, action, reward, next_observation, done)
-        agent.learn()
-        observation = next_observation
-    writer.add_scalar(f"Score - {episode_identifier}", score, global_step=i)
+    ep_reward = 0
 
-    if (i % 10):
-        agent.save_models()
+    for t in range(episode_length):
+        action = agent.select_action(state)
+        action = (action + np.random.normal(0, 0.1, size=action_dim)).clip(-max_action, max_action)
 
+        next_obs, reward, terminated, truncated, info = env.step(action)
+        done = terminated or truncated
+        ep_reward += reward
 
-    
-    print(f"Episode: {i} score: {score}")
+        if isinstance(next_obs, dict):
+            next_state = np.concatenate([v.ravel() for v in next_obs.values()])
+        else:
+            next_state = next_obs
+
+        replay_buffer.add((state, action, reward, next_state, float(done)))
+
+        if len(replay_buffer.storage) > 5000:
+            agent.train(replay_buffer, batch_size=100)
+
+        state = next_state
+        env.render()
+
+        if done:
+            break
+
+    print(f"Episode {ep}: Total Reward = {ep_reward}")
