@@ -17,7 +17,7 @@ env = suite.make(
     env_name,
     robots=["GR1FixedLowerBody"],
     controller_configs=[load_composite_controller_config(
-        controller="humanoid.json"
+        controller="configs/humanoid.json"
     )],
     reward_shaping=True,
     has_renderer=True,

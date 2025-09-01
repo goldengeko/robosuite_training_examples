@@ -31,7 +31,7 @@ env = suite.make(
     robots=["AlertSpot"],
 
     controller_configs=[load_composite_controller_config(
-        robot="SpotArm"
+        robot="SpotArm" 
     )],
     reward_shaping=True,
     has_renderer=True,
