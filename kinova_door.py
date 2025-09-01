@@ -17,7 +17,7 @@ env = suite.make(
     env_name,
     robots=["Kinova3"],
     controller_configs=[load_composite_controller_config(
-        controller="/home/user/.local/lib/python3.10/site-packages/robosuite/controllers/config/robots/default_kinova3.json"
+        robot="Kinova3"
     )],
     reward_shaping=True,
     has_renderer=True,

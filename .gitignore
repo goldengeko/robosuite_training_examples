@@ -1,6 +1,7 @@
 tmp/
 logs/
-.pyc
+*.pyc
 __pycache__/
-.txt
-.TXT
+*.txt
+*.TXT
+runs/
