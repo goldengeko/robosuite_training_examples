@@ -4,6 +4,8 @@ import torch.nn.functional as F
 from torch.distributions import Normal
 import numpy as np
 
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # -------------------------
 # Shared Actor & Critic for TD3
 # -------------------------
@@ -78,11 +80,11 @@ class ReplayBuffer:
             dones.append(np.asarray(d))
 
         return (
-            torch.FloatTensor(np.array(states)),
-            torch.FloatTensor(np.array(actions)),
-            torch.FloatTensor(np.array(rewards)).unsqueeze(1),
-            torch.FloatTensor(np.array(next_states)),
-            torch.FloatTensor(np.array(dones)).unsqueeze(1)
+            torch.FloatTensor(np.array(states)).to(device),
+            torch.FloatTensor(np.array(actions)).to(device),
+            torch.FloatTensor(np.array(rewards)).unsqueeze(1).to(device),
+            torch.FloatTensor(np.array(next_states)).to(device),
+            torch.FloatTensor(np.array(dones)).unsqueeze(1).to(device)
         )
 
 
@@ -91,13 +93,13 @@ class ReplayBuffer:
 # -------------------------
 class TD3:
     def __init__(self, state_dim, action_dim, max_action, discount=0.99, tau=0.005, policy_noise=0.2, noise_clip=0.5, policy_freq=2):
-        self.actor = Actor(state_dim, action_dim, max_action)
-        self.actor_target = Actor(state_dim, action_dim, max_action)
+        self.actor = Actor(state_dim, action_dim, max_action).to(device)
+        self.actor_target = Actor(state_dim, action_dim, max_action).to(device)
         self.actor_target.load_state_dict(self.actor.state_dict())
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=3e-4)
 
-        self.critic = Critic(state_dim, action_dim)
-        self.critic_target = Critic(state_dim, action_dim)
+        self.critic = Critic(state_dim, action_dim).to(device)
+        self.critic_target = Critic(state_dim, action_dim).to(device)
         self.critic_target.load_state_dict(self.critic.state_dict())
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=3e-4)
 
@@ -110,7 +112,7 @@ class TD3:
         self.total_it = 0
 
     def select_action(self, state):
-        state = torch.FloatTensor(state.reshape(1, -1))
+        state = torch.FloatTensor(state.reshape(1, -1)).to(device)
         return self.actor(state).cpu().data.numpy().flatten()
 
     def train(self, replay_buffer, batch_size=100):
@@ -185,8 +187,8 @@ class PPO:
     def __init__(self, state_dim, action_dim, max_action,
                  clip_ratio=0.2, lr=3e-4, gamma=0.99, lam=0.95,
                  train_iters=80, target_kl=0.01):
-        self.actor = PPOActor(state_dim, action_dim, max_action)
-        self.critic = ValueCritic(state_dim)
+        self.actor = PPOActor(state_dim, action_dim, max_action).to(device)
+        self.critic = ValueCritic(state_dim).to(device)
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=lr)
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=lr)
 
@@ -237,7 +239,7 @@ class PPO:
                 break
 
     def select_action(self, state):
-        state = torch.FloatTensor(state.reshape(1, -1))
+        state = torch.FloatTensor(state.reshape(1, -1)).to(device)
         with torch.no_grad():
             action, log_prob = self.actor.act(state)
-        return action.numpy().flatten(), log_prob.numpy().flatten()
+        return action.cpu().numpy().flatten(), log_prob.cpu().numpy().flatten()

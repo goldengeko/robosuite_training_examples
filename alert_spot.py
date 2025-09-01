@@ -1,23 +1,37 @@
-import os
-import numpy as np
+from robosuite.robots import register_robot_class
+from robosuite.models.robots import Kinova3
 import robosuite as suite
 from robosuite.controllers import load_composite_controller_config
 from robosuite.wrappers import GymWrapper
 from networks import PPO, ReplayBuffer
+import numpy as np
 import torch
-# from torch.utils.tensorboard import SummaryWriter
+import mujoco
 
-if not os.path.exists("tmp/humanoid_ppo"):
-    os.makedirs("tmp/humanoid_ppo")
+@register_robot_class("LeggedRobot")
+class AlertSpot(Kinova3):
+    @property
+    def default_base(self):
+        return "Spot"
+    
+    def set_base_xpos(self, pos):
+        return super().set_base_xpos([pos[1] - 0.75, pos[0], pos[2]])
 
-# writer = SummaryWriter(log_dir="runs/td3_training")
+    @property
+    def default_arms(self):
+        return {"right": "Kinova3"}
+    @property
+    def default_gripper(self):
+        return {"right": "Robotiq140Gripper"}
+    
 
-env_name = "Lift"
+# Create environment
 env = suite.make(
-    env_name,
-    robots=["GR1FixedLowerBody"],
+    env_name="Lift",
+    robots=["AlertSpot"],
+
     controller_configs=[load_composite_controller_config(
-        controller="humanoid.json"
+        robot="SpotArm"
     )],
     reward_shaping=True,
     has_renderer=True,
@@ -26,6 +40,10 @@ env = suite.make(
     use_camera_obs=False,
     control_freq=20
 )
+
+# env.reset()
+# mujoco.viewer.launch(env.sim.model._model, env.sim.data._data)
+
 env = GymWrapper(env)
 
 obs, _ = env.reset()
@@ -72,37 +90,9 @@ for ep in range(episodes):
         if done:
             break
 
-    # writer.add_scalar("Reward/Episode", ep_reward, ep)
-
-    # for name, param in agent.actor.named_parameters():
-    #     writer.add_histogram(f"Actor/{name}", param, ep)
-    # for name, param in agent.critic.named_parameters():
-    #     writer.add_histogram(f"Critic/{name}", param, ep)
-
     print(f"Episode {ep}: Total Reward = {ep_reward}")
 
     if ep_reward > best_reward:
         best_reward = ep_reward
-        torch.save(agent.actor.state_dict(), "tmp/humanoid_ppo/best_actor.pth")
-        torch.save(agent.critic.state_dict(), "tmp/humanoid_ppo/best_critic.pth")
-
-
-#------------Inference----------------
-
-# Load the trained actor and critic networks
-# agent.actor.load_state_dict(torch.load("tmp/humanoid_ppo/best_actor.pth"))
-# # agent.critic.load_state_dict(torch.load("tmp/humanoid_ppo/best_critic.pth"))
-
-# agent.actor.eval()
-# # agent.critic.eval()
-
-# obs, _ = env.reset()
-# done = False
-
-# while not done:
-#     state = torch.tensor(obs, dtype=torch.float32).to(device="cpu")
-#     action = agent.actor(state).cpu().detach().numpy().flatten()
-#     obs, reward, terminated, truncated, info = env.step(action)
-#     done = terminated or truncated
-
-
+        torch.save(agent.actor.state_dict(), "tmp/td3/best_actor.pth")
+        torch.save(agent.critic.state_dict(), "tmp/td3/best_critic.pth")
