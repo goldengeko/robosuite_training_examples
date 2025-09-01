@@ -1,0 +1,6 @@
+tmp/
+logs/
+.pyc
+__pycache__/
+.txt
+.TXT
