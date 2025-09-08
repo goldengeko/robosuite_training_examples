@@ -5,30 +5,23 @@ from robosuite.controllers import load_composite_controller_config
 from robosuite.wrappers import GymWrapper
 from networks import TD3, ReplayBuffer
 import torch
-from torch.utils.tensorboard import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter
 from robosuite.robots import register_robot_class
-from robosuite.models.robots import Kinova3
+from robosuite.models.robots import Kinova3_6DOF
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 if not os.path.exists("tmp/kinova_td3"):
     os.makedirs("tmp/kinova_td3")
 
-writer = SummaryWriter(log_dir="runs/td3_training")
-env_name = "Door"
+# writer = SummaryWriter(log_dir="runs/td3_training")
+env_name = "Lift"
 
-@register_robot_class("FixedBaseRobot")
-class KinovaCustom(Kinova3):
-    @property
-    def default_gripper(self):
-        return {"right": "Robotiq140Gripper"}  # Change to your desired gripper
-
-# Then, use your custom robot in suite.make:
 env = suite.make(
     env_name,
-    robots=["KinovaCustom"],  # Use the custom robot
+    robots="Kinova3_6DOF",
     controller_configs=[load_composite_controller_config(
-        robot="Kinova3"
+        robot="Kinova3_6DOF",
     )],
     reward_shaping=True,
     has_renderer=True,
@@ -86,14 +79,14 @@ for ep in range(episodes):
         if done:
             break
 
-    writer.add_scalar("Reward/Episode", ep_reward, ep)
-    if losses:
-        writer.add_scalar("Loss/Episode", np.mean(losses), ep)
+    # writer.add_scalar("Reward/Episode", ep_reward, ep)
+    # if losses:
+    #     writer.add_scalar("Loss/Episode", np.mean(losses), ep)
 
-    for name, param in agent.actor.named_parameters():
-        writer.add_histogram(f"Actor/{name}", param, ep)
-    for name, param in agent.critic.named_parameters():
-        writer.add_histogram(f"Critic/{name}", param, ep)
+    # for name, param in agent.actor.named_parameters():
+    #     writer.add_histogram(f"Actor/{name}", param, ep)
+    # for name, param in agent.critic.named_parameters():
+    #     writer.add_histogram(f"Critic/{name}", param, ep)
 
     print(f"Episode {ep}: Total Reward = {ep_reward}")
 
@@ -105,7 +98,7 @@ for ep in range(episodes):
 
 #------------Inference----------------
 
-# Load the trained actor and critic networks
+# # Load the trained actor and critic networks
 # agent.actor.load_state_dict(torch.load("tmp/kinova_td3/best_actor.pth", map_location=device))
 # agent.actor.eval()
 

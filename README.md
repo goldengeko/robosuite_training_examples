@@ -80,3 +80,22 @@ python alert_spot.py
 | `humanoid.json`  | Example composite controller config for humanoid robot (whole-body IK).                      |
 
 
+# Add Kinova 6DOF robot to robosuite
+
+- Copy the [kinova3_6dof](/kinova3_6dof/) folder to ```~/.local/lib/python3.10/site-packages/robosuite/models/assets/robots/```
+- Copy the [controller configs](default_kinova3_6dof.json) to ``` ~/.local/lib/python3.10/site-packages/robosuite/controllers/config/robots/```
+
+- Copy [Robot class script](kinova3_6dof_robot.py) to ```~/.local/lib/python3.10/site-packages/robosuite/models/robots/manipulators/```
+
+- Add the following import statement to `~/.local/lib/python3.10/site-packages/robosuite/models/robots/manipulators/__init__.py`:
+
+```python
+from .kinova3_6dof_robot import Kinova3_6DOF
+```
+
+- Add the new robot to robot class mapping in ```~/.local/lib/python3.10/site-packages/robosuite/robots/__init__.py```
+
+```python
+"Kinova3_6DOF": FixedBaseRobot,
+```
+
