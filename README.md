@@ -74,7 +74,7 @@ python alert_spot.py
 | File             | Description                                                                                   |
 |------------------|----------------------------------------------------------------------------------------------|
 | `humanoid.py`    | PPO training loop for humanoid robot with whole-body IK controller.                          |
-| `kinova_door.py` | TD3 training loop for Kinova3 robot on Door environment, with custom robot registration.      |
+| `kinova_pick.py` | TD3 training loop for Kinova3 robot on Pick environment, with custom robot registration.      |
 | `alert_spot.py`  | PPO training loop for custom legged robot combining Spot base and Kinova3 arm.               |
 | `networks.py`    | Neural network implementations for TD3 and PPO agents, plus replay buffer.                   |
 | `humanoid.json`  | Example composite controller config for humanoid robot (whole-body IK).                      |
