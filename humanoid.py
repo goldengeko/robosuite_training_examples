@@ -90,19 +90,19 @@ for ep in range(episodes):
 #------------Inference----------------
 
 # Load the trained actor and critic networks
-# agent.actor.load_state_dict(torch.load("tmp/humanoid_ppo/best_actor.pth"))
-# # agent.critic.load_state_dict(torch.load("tmp/humanoid_ppo/best_critic.pth"))
+agent.actor.load_state_dict(torch.load("tmp/humanoid_ppo/best_actor.pth"))
+# agent.critic.load_state_dict(torch.load("tmp/humanoid_ppo/best_critic.pth"))
 
-# agent.actor.eval()
-# # agent.critic.eval()
+agent.actor.eval()
+# agent.critic.eval()
 
-# obs, _ = env.reset()
-# done = False
+obs, _ = env.reset()
+done = False
 
-# while not done:
-#     state = torch.tensor(obs, dtype=torch.float32).to(device="cpu")
-#     action = agent.actor(state).cpu().detach().numpy().flatten()
-#     obs, reward, terminated, truncated, info = env.step(action)
-#     done = terminated or truncated
+while not done:
+    state = torch.tensor(obs, dtype=torch.float32).to(device="cpu")
+    action = agent.actor(state).cpu().detach().numpy().flatten()
+    obs, reward, terminated, truncated, info = env.step(action)
+    done = terminated or truncated
 
 

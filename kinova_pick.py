@@ -5,25 +5,83 @@ from robosuite.controllers import load_composite_controller_config
 from robosuite.wrappers import GymWrapper
 from networks import TD3, ReplayBuffer
 import torch
-# from torch.utils.tensorboard import SummaryWriter
-from robosuite.robots import register_robot_class
-from robosuite.models.robots import Kinova3_6DOF
+from robosuite.environments.manipulation.lift import Lift
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 if not os.path.exists("tmp/kinova_td3"):
     os.makedirs("tmp/kinova_td3")
 
-# writer = SummaryWriter(log_dir="runs/td3_training")
-env_name = "Lift"
 
-env = suite.make(
-    env_name,
+class CustomLift(Lift):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.cube_body = self.sim.model.body_name2id("cube_main")
+        self.cube_height = self.sim.data.body_xpos[self.cube_body_id][2]
+        self.table_height = self.model.mujoco_arena.table_offset[2]
+        self.gripper = self.robots[0].gripper
+
+    def reward(self, action=None):
+
+        reward = 0.0
+
+        
+        """
+        Type 1: sparse reward: This type of reward is generally harder to learn from, but is more
+        representative of real-world tasks where a binary success signal is
+        often the only available feedback.
+
+        if self._check_success():
+            reward = 1.0
+        
+        """
+
+        """
+        Type 2: dense reward: This type of reward provides more frequent feedback to the agent,
+        which can help speed up learning.
+
+
+        elif self.reward_shaping:
+
+            # reaching reward
+            TODO: You can modify the reaching reward as needed
+
+            # grasping reward
+            TODO: You can modify the grasping reward as needed
+
+        Scale reward if requested: scaling is often useful for algorithms 
+        that are sensitive to the magnitude of the reward signal.
+
+
+        if self.reward_scale is not None:
+            reward *= self.reward_scale / 2.25
+ 
+            
+        """
+
+        return reward
+
+
+    def _check_success(self):
+        """
+        Check if cube has been lifted.
+
+        Returns:
+            bool: True if cube has been lifted
+        """
+        cube_height = self.sim.data.body_xpos[self.cube_body_id][2]
+        table_height = self.model.mujoco_arena.table_offset[2]
+
+        # return TODO: define the success condition 
+
+
+env = CustomLift(
     robots="Kinova3_6DOF",
     controller_configs=[load_composite_controller_config(
         robot="Kinova3_6DOF",
     )],
-    reward_shaping=True,
+    # reward_shaping= TODO: Set to True or False,
     has_renderer=True,
     has_offscreen_renderer=False,
     render_camera="frontview",
@@ -46,8 +104,8 @@ replay_buffer = ReplayBuffer()
 agent = TD3(state_dim, action_dim, max_action)
 
 #--------------Training Loop--------------
-episodes = 1000
-episode_length = 500
+# episodes = TODO: Set the number of episodes
+# episode_length = TODO: Set the maximum length of each episode
 
 best_reward = -float('inf')
 
@@ -61,6 +119,7 @@ for ep in range(episodes):
     for t in range(episode_length):
         action = agent.select_action(state)
         action = (action + np.random.normal(0, 0.1, size=action_dim)).clip(-max_action, max_action)
+        print(f"Action space: {action}") 
 
         next_obs, reward, terminated, truncated, info = env.step(action)
         done = terminated or truncated
@@ -79,37 +138,23 @@ for ep in range(episodes):
         if done:
             break
 
-    # writer.add_scalar("Reward/Episode", ep_reward, ep)
-    # if losses:
-    #     writer.add_scalar("Loss/Episode", np.mean(losses), ep)
-
-    # for name, param in agent.actor.named_parameters():
-    #     writer.add_histogram(f"Actor/{name}", param, ep)
-    # for name, param in agent.critic.named_parameters():
-    #     writer.add_histogram(f"Critic/{name}", param, ep)
-
     print(f"Episode {ep}: Total Reward = {ep_reward}")
 
     if ep_reward > best_reward:
         best_reward = ep_reward
-        torch.save(agent.actor.state_dict(), "tmp/kinova_td3/best_actor.pth")
-        torch.save(agent.critic.state_dict(), "tmp/kinova_td3/best_critic.pth")
-
+        # TODO: Save the best model (Should the actor be saved or the critic or both?)
 
 #------------Inference----------------
 
-# # Load the trained actor and critic networks
-# agent.actor.load_state_dict(torch.load("tmp/kinova_td3/best_actor.pth", map_location=device))
-# agent.actor.eval()
+# Load the trained actor and critic networks
+agent.actor.load_state_dict(torch.load("tmp/kinova_td3/best_actor.pth", map_location=device))
+agent.actor.eval()
 
-# # Run inference
-# done = False
-# while not done:
-#     state_tensor = torch.tensor(state, dtype=torch.float32).to(device)
-#     action = agent.actor(state_tensor.unsqueeze(0)).cpu().detach().numpy().flatten()
-#     obs, reward, terminated, truncated, _ = env.step(action)
-#     done = terminated or truncated
-#     state = np.concatenate([v.ravel() for v in obs.values()]) if isinstance(obs, dict) else obs
-
-
-
+# Run inference
+done = False
+while not done:
+    state_tensor = torch.tensor(state, dtype=torch.float32).to(device)
+    action = agent.actor(state_tensor.unsqueeze(0)).cpu().detach().numpy().flatten()
+    obs, reward, terminated, truncated, _ = env.step(action)
+    done = terminated or truncated
+    state = np.concatenate([v.ravel() for v in obs.values()]) if isinstance(obs, dict) else obs
